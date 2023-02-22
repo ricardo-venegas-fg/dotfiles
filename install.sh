@@ -1,54 +1,25 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
+set -exuo pipefail
+
+script_dir=$(pwd)
+
+cd ~
+
+# This script is the last thing run during postCreate. You can set up more customization as long as you can script it here.
+
+# Link from the original script directory into home.
+ln -s "${script_dir}/packages.sh" .
+ln -s "${script_dir}/aliases.sh" .
+
+# Copy powershell profile
 mkdir --parents /home/vscode/.config/powershell
+cp "${script_dir}/profile.ps1" /home/vscode/.config/powershell/Microsoft.PowerShell_profile.ps1
 
-# line number where payload starts
-PAYLOAD_LINE=$(awk '/^__PAYLOAD_BEGINS__/ { print NR + 1; exit 0; }' $0)
-tail -n +${PAYLOAD_LINE} $0 > /home/vscode/.config/powershell/Microsoft.PowerShell_profile.ps1
+# Feed script into rc file so it's picked up by every instance of zsh opened.
+echo ". ${script_dir}/aliases.sh" >> .zshrc
+echo "Finished installing aliases."
 
-exit 0
-
-__PAYLOAD_BEGINS__
-function greenConsoleText($text) {
-    $ESC = [char]27;
-    return "$ESC[32m$($text)$ESC[0m"
-  }
-  
-  function redConsoleText($text) {
-    $ESC = [char]27;
-    return "$ESC[91m$($text)$ESC[0m"
-  }
-   
-  function Prompt {
-    $lastExitCodeBeforePrompt = $global:LASTEXITCODE
-    $new = 0
-    $modified = 0
-    $deleted = 0
-    $prompt = ""
-    $statusList = (git status -s)
-    if ($global:LASTEXITCODE -eq 0) {
-      git status -s | 
-      foreach { $_.Trim().Split(" ")[0] } | 
-      foreach { 
-        if ($_ -eq "??") {
-          $new = $new + 1
-        }
-        else {
-          if ($_ -eq "D") { $deleted = $deleted + 1 }
-          else { $modified = $modified + 1 }
-        }
-      }
-      $currentBranch = (git branch --list | Where { $_.StartsWith("*") }).Split(" ", 2)[1]
-      if ($new -ne 0 -or $modified -ne 0 -or $deleted -ne 0) {
-        $prompt = redConsoleText(" ($currentBranch +$new ~$modified -$deleted)")
-      }
-      else {
-        $prompt = redConsoleText(" ($currentBranch)")
-      }
-    }
-    $global:LASTEXITCODE = $lastExitCodeBeforePrompt
-    "[$(greenConsoleText(get-location))$prompt]`r`nPWSH>"
-  }
-  
-  
-  
+# Run script to install any packages.
+./packages.sh
+echo "Finished installing packages."
